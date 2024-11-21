@@ -103,6 +103,13 @@ void redis_register_persistent_resource(zend_string *id, void *ptr, int le_id) {
     zend_register_persistent_resource(ZSTR_VAL(id), ZSTR_LEN(id), ptr, le_id);
 }
 
+/* Do not allocate empty string or string with one character */
+static zend_always_inline void redis_add_next_index_stringl(zval *arg, const char *str, size_t length) {
+    zval tmp;
+    ZVAL_STRINGL_FAST(&tmp, str, length);
+    zend_hash_next_index_insert(Z_ARRVAL_P(arg), &tmp);
+}
+
 static ConnectionPool *
 redis_sock_get_connection_pool(RedisSock *redis_sock)
 {
@@ -2666,14 +2673,14 @@ PHP_REDIS_API int redis_string_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock 
     }
     if (IS_ATOMIC(redis_sock)) {
         if (!redis_unpack(redis_sock, response, response_len, return_value)) {
-            RETVAL_STRINGL(response, response_len);
+            RETVAL_STRINGL_FAST(response, response_len);
         }
     } else {
         zval z_unpacked;
         if (redis_unpack(redis_sock, response, response_len, &z_unpacked)) {
             add_next_index_zval(z_tab, &z_unpacked);
         } else {
-            add_next_index_stringl(z_tab, response, response_len);
+            redis_add_next_index_stringl(z_tab, response, response_len);
         }
     }
 
@@ -3460,7 +3467,7 @@ redis_mbulk_reply_loop(RedisSock *redis_sock, zval *z_tab, int count,
         if (unwrap && redis_unpack(redis_sock, line, len, &z_unpacked)) {
             add_next_index_zval(z_tab, &z_unpacked);
         } else {
-            add_next_index_stringl(z_tab, line, len);
+            redis_add_next_index_stringl(z_tab, line, len);
         }
         efree(line);
     }
@@ -3882,7 +3889,7 @@ redis_unpack(RedisSock *redis_sock, const char *src, int srclen, zval *zdst) {
     /* Uncompress, then unserialize */
     if (redis_uncompress(redis_sock, &buf, &len, src, srclen)) {
         if (!redis_unserialize(redis_sock, buf, len, zdst)) {
-            ZVAL_STRINGL(zdst, buf, len);
+            ZVAL_STRINGL_FAST(zdst, buf, len);
         }
         efree(buf);
         return 1;

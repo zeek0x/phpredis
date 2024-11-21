@@ -29,6 +29,9 @@
     /* use RedisException when ValueError not available */
     #define REDIS_VALUE_EXCEPTION(m) REDIS_THROW_EXCEPTION(m, 0)
     #define RETURN_THROWS() RETURN_FALSE
+    /* ZVAL_STRINGL_FAST and RETVAL_STRINGL_FAST macros are supported since PHP 8 */
+    #define ZVAL_STRINGL_FAST(z, s, l) ZVAL_STRINGL(z, s, l)
+    #define RETVAL_STRINGL_FAST(s, l) RETVAL_STRINGL(s, l)
 #else
     #define redis_hash_fetch_ops(zstr) php_hash_fetch_ops(zstr)
 
