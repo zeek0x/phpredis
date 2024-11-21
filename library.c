@@ -3350,8 +3350,10 @@ PHP_REDIS_API int redis_sock_read_multibulk_reply(INTERNAL_FUNCTION_PARAMETERS,
     }
     if (numElems == -1 && redis_sock->null_mbulk_as_null) {
         ZVAL_NULL(&z_multi_result);
+    } else if (numElems < 1) {
+        ZVAL_EMPTY_ARRAY(&z_multi_result);
     } else {
-        array_init(&z_multi_result);
+        array_init_size(&z_multi_result, numElems);
         redis_mbulk_reply_loop(redis_sock, &z_multi_result, numElems, UNSERIALIZE_ALL);
     }
 
@@ -3380,7 +3382,7 @@ redis_mbulk_reply_raw(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval 
         return FAILURE;
     }
     zval z_multi_result;
-    array_init(&z_multi_result); /* pre-allocate array for multi's results. */
+    array_init_size(&z_multi_result, numElems); /* pre-allocate array for multi's results. */
 
     redis_mbulk_reply_loop(redis_sock, &z_multi_result, numElems, UNSERIALIZE_NONE);
 
@@ -3409,14 +3411,18 @@ redis_mbulk_reply_double(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zv
         return FAILURE;
     }
 
-    array_init(&z_multi_result);
-    for (i = 0; i < numElems; ++i) {
-        if ((line = redis_sock_read(redis_sock, &len)) == NULL) {
-            add_next_index_bool(&z_multi_result, 0);
-            continue;
+    if (numElems < 1) {
+        ZVAL_EMPTY_ARRAY(&z_multi_result);
+    } else {
+        array_init_size(&z_multi_result, numElems);
+        for (i = 0; i < numElems; ++i) {
+            if ((line = redis_sock_read(redis_sock, &len)) == NULL) {
+                add_next_index_bool(&z_multi_result, 0);
+                continue;
+            }
+            add_next_index_double(&z_multi_result, atof(line));
+            efree(line);
         }
-        add_next_index_double(&z_multi_result, atof(line));
-        efree(line);
     }
 
     if (IS_ATOMIC(redis_sock)) {
