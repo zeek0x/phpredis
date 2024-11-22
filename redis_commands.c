@@ -268,11 +268,11 @@ int redis_key_long_val_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     zend_long expire;
     zval *z_val;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "slz", &key, &key_len,
-                             &expire, &z_val) == FAILURE)
-    {
-        return FAILURE;
-    }
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STRING(key, key_len)
+        Z_PARAM_LONG(expire)
+        Z_PARAM_ZVAL(z_val)
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
 
     *cmd_len = REDIS_CMD_SPPRINTF(cmd, kw, "klv", key, key_len, expire, z_val);
 
@@ -451,11 +451,9 @@ int redis_key_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     char *key;
     size_t key_len;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &key, &key_len)
-                             ==FAILURE)
-    {
-        return FAILURE;
-    }
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STRING(key, key_len);
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
 
     *cmd_len = REDIS_CMD_SPPRINTF(cmd, kw, "k", key, key_len);
 
