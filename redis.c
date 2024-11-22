@@ -2021,7 +2021,7 @@ PHP_METHOD(Redis, exec)
     if (IS_PIPELINE(redis_sock)) {
         if (smart_str_get_len(&redis_sock->pipeline_cmd) == 0) {
             /* Empty array when no command was run. */
-            array_init(&z_ret);
+            ZVAL_EMPTY_ARRAY(&z_ret);
         } else {
             if (redis_sock_write(redis_sock, ZSTR_VAL(redis_sock->pipeline_cmd.s),
                     ZSTR_LEN(redis_sock->pipeline_cmd.s)) < 0) {
