@@ -3389,9 +3389,13 @@ redis_mbulk_reply_raw(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval 
         return FAILURE;
     }
     zval z_multi_result;
-    array_init_size(&z_multi_result, numElems); /* pre-allocate array for multi's results. */
 
-    redis_mbulk_reply_loop(redis_sock, &z_multi_result, numElems, UNSERIALIZE_NONE);
+    if (numElems < 1) {
+        ZVAL_EMPTY_ARRAY(&z_multi_result);
+    } else {
+        array_init_size(&z_multi_result, numElems); /* pre-allocate array for multi's results. */
+        redis_mbulk_reply_loop(redis_sock, &z_multi_result, numElems, UNSERIALIZE_NONE);
+    }
 
     if (IS_ATOMIC(redis_sock)) {
         RETVAL_ZVAL(&z_multi_result, 0, 1);
