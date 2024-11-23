@@ -177,13 +177,7 @@ typedef enum {
 #define IS_PIPELINE(redis_sock) (redis_sock->mode & PIPELINE)
 
 #define PIPELINE_ENQUEUE_COMMAND(cmd, cmd_len) do { \
-    if (redis_sock->pipeline_cmd == NULL) { \
-        redis_sock->pipeline_cmd = zend_string_init(cmd, cmd_len, 0); \
-    } else { \
-        size_t pipeline_len = ZSTR_LEN(redis_sock->pipeline_cmd); \
-        redis_sock->pipeline_cmd = zend_string_realloc(redis_sock->pipeline_cmd, pipeline_len + cmd_len, 0); \
-        memcpy(&ZSTR_VAL(redis_sock->pipeline_cmd)[pipeline_len], cmd, cmd_len); \
-    } \
+    smart_str_appendl(&redis_sock->pipeline_cmd, cmd, cmd_len); \
 } while (0)
 
 #define REDIS_SAVE_CALLBACK(callback, closure_context) do { \
@@ -324,7 +318,7 @@ typedef struct {
     struct fold_item    *head;
     struct fold_item    *current;
 
-    zend_string         *pipeline_cmd;
+    smart_str           pipeline_cmd;
 
     zend_string         *err;
 
