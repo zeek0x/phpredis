@@ -3482,9 +3482,7 @@ int redis_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         redis_cmd_init_sstr(&cmdstr, 1 + zend_hash_num_elements(Z_ARRVAL(z_args[1])) * 2, ZEND_STRL("HSET"));
 
         /* Append key */
-        zkey = zval_get_string(&z_args[0]);
-        redis_cmd_append_sstr_key(&cmdstr, ZSTR_VAL(zkey), ZSTR_LEN(zkey), redis_sock, slot);
-        zend_string_release(zkey);
+        redis_cmd_append_sstr_key_zval(&cmdstr, &z_args[0], redis_sock, slot);
 
         ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(z_args[1]), zkey, z_ele) {
             if (zkey != NULL) {
@@ -3502,15 +3500,11 @@ int redis_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
         redis_cmd_init_sstr(&cmdstr, argc, ZEND_STRL("HSET"));
 
         /* Append key */
-        zkey = zval_get_string(&z_args[0]);
-        redis_cmd_append_sstr_key(&cmdstr, ZSTR_VAL(zkey), ZSTR_LEN(zkey), redis_sock, slot);
-        zend_string_release(zkey);
+        redis_cmd_append_sstr_key_zval(&cmdstr, &z_args[0], redis_sock, slot);
 
         for (i = 1; i < argc; ++i) {
             if (i % 2) {
-                zkey = zval_get_string(&z_args[i]);
-                redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(zkey), ZSTR_LEN(zkey));
-                zend_string_release(zkey);
+                redis_cmd_append_sstr_zval(&cmdstr, &z_args[i], NULL);
             } else {
                 redis_cmd_append_sstr_zval(&cmdstr, &z_args[i], redis_sock);
             }

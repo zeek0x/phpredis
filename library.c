@@ -1089,7 +1089,7 @@ redis_cmd_append_sstr_dbl(smart_string *str, double value)
  * the value may be serialized, if we're configured to do that. */
 int redis_cmd_append_sstr_zval(smart_string *str, zval *z, RedisSock *redis_sock) {
     int valfree, retval;
-    zend_string *zstr;
+    zend_string *zstr, *tmp;
     size_t vallen;
     char *val;
 
@@ -1098,9 +1098,9 @@ int redis_cmd_append_sstr_zval(smart_string *str, zval *z, RedisSock *redis_sock
         retval = redis_cmd_append_sstr(str, val, vallen);
         if (valfree) efree(val);
     } else {
-        zstr = zval_get_string(z);
-        retval = redis_cmd_append_sstr_zstr(str, zstr);
-        zend_string_release(zstr);
+        zstr = zval_get_tmp_string(z, &tmp);
+        retval = redis_cmd_append_sstr(str, ZSTR_VAL(zstr), ZSTR_LEN(zstr));
+        zend_tmp_string_release(tmp);
     }
 
     return retval;
@@ -1128,12 +1128,12 @@ int redis_cmd_append_sstr_key_zstr(smart_string *dst, zend_string *key, RedisSoc
 }
 
 int redis_cmd_append_sstr_key_zval(smart_string *dst, zval *zv, RedisSock *redis_sock, short *slot) {
-    zend_string *key;
+    zend_string *key, *tmp;
     int res;
 
-    key = zval_get_string(zv);
-    res = redis_cmd_append_sstr_key_zstr(dst, key, redis_sock, slot);
-    zend_string_release(key);
+    key = zval_get_tmp_string(zv, &tmp);
+    res = redis_cmd_append_sstr_key(dst, ZSTR_VAL(key), ZSTR_LEN(key), redis_sock, slot);
+    zend_tmp_string_release(tmp);
 
     return res;
 }
