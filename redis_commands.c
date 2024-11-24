@@ -3867,56 +3867,31 @@ int redis_sort_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 int redis_hdel_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
                    char **cmd, int *cmd_len, short *slot, void **ctx)
 {
-    zval *z_args;
     smart_string cmdstr = {0};
-    char *arg;
-    int arg_free, i;
-    size_t arg_len;
-    int argc = ZEND_NUM_ARGS();
-    zend_string *zstr;
+    zend_string *key = NULL;
+    int i;
+    int argc = 0;
+    zval *args;
 
-    // We need at least KEY and one member
-    if (argc < 2) {
-        return FAILURE;
-    }
-
-    // Grab arguments as an array
-    z_args = emalloc(argc * sizeof(zval));
-    if (zend_get_parameters_array(ht, argc, z_args) == FAILURE) {
-        efree(z_args);
-        return FAILURE;
-    }
-
-    // Get first argument (the key) as a string
-    zstr = zval_get_string(&z_args[0]);
-    arg = ZSTR_VAL(zstr);
-    arg_len = ZSTR_LEN(zstr);
-
-    // Prefix
-    arg_free = redis_key_prefix(redis_sock, &arg, &arg_len);
+    ZEND_PARSE_PARAMETERS_START(2, -1)
+        Z_PARAM_STR(key)
+        Z_PARAM_VARIADIC('*', args, argc)
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
 
     // Start command construction
-    redis_cmd_init_sstr(&cmdstr, argc, ZEND_STRL("HDEL"));
-    redis_cmd_append_sstr(&cmdstr, arg, arg_len);
+    redis_cmd_init_sstr(&cmdstr, argc + 1, ZEND_STRL("HDEL"));
 
-    // Set our slot, free key if we prefixed it
-    CMD_SET_SLOT(slot,arg,arg_len);
-    zend_string_release(zstr);
-    if (arg_free) efree(arg);
+    // Append key
+    redis_cmd_append_sstr_key_zstr(&cmdstr, key, redis_sock, slot);
 
     // Iterate through the members we're removing
-    for (i = 1; i < argc; i++) {
-        zstr = zval_get_string(&z_args[i]);
-        redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(zstr), ZSTR_LEN(zstr));
-        zend_string_release(zstr);
+    for (i = 0; i < argc; i++) {
+        redis_cmd_append_sstr_zval(&cmdstr, &args[i], NULL);
     }
 
     // Push out values
     *cmd     = cmdstr.c;
     *cmd_len = cmdstr.len;
-
-    // Cleanup
-    efree(z_args);
 
     // Success!
     return SUCCESS;
