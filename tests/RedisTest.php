@@ -3456,6 +3456,22 @@ class Redis_Test extends TestSuite {
         $this->assertEquals(5, count($ret)); // should be 5 atomic operations
     }
 
+    public function testMultiEmpty()
+    {
+        $ret = $this->redis->multi()->exec();
+        $this->assertEquals([], $ret);
+    }
+
+    public function testPipelineEmpty()
+    {
+        if (!$this->havePipeline()) {
+            $this->markTestSkipped();
+        }
+
+        $ret = $this->redis->pipeline()->exec();
+        $this->assertEquals([], $ret);
+    }
+
     /* GitHub issue #1211 (ignore redundant calls to pipeline or multi) */
     public function testDoublePipeNoOp() {
         /* Only the first pipeline should be honored */
