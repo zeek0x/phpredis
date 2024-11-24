@@ -3534,7 +3534,7 @@ redis_mbulk_reply_zipped_raw_variant(RedisSock *redis_sock, zval *zret, int coun
 PHP_REDIS_API int redis_mbulk_reply_assoc(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock, zval *z_tab, void *ctx)
 {
     char *response;
-    int response_len;
+    int response_len, retval;
     int i, numElems;
 
     zval *z_keys = ctx;
@@ -3545,44 +3545,46 @@ PHP_REDIS_API int redis_mbulk_reply_assoc(INTERNAL_FUNCTION_PARAMETERS, RedisSoc
         } else {
             add_next_index_bool(z_tab, 0);
         }
-        goto failure;
+        retval = FAILURE;
+        goto end;
     }
+
     zval z_multi_result;
-    array_init(&z_multi_result); /* pre-allocate array for multi's results. */
+    array_init_size(&z_multi_result, numElems); /* pre-allocate array for multi's results. */
 
     for(i = 0; i < numElems; ++i) {
-        zend_string *zstr = zval_get_string(&z_keys[i]);
+        zend_string *tmp_str;
+        zend_string *zstr = zval_get_tmp_string(&z_keys[i], &tmp_str);
         response = redis_sock_read(redis_sock, &response_len);
-        if(response != NULL) {
-            zval z_unpacked;
-            if (redis_unpack(redis_sock, response, response_len, &z_unpacked)) {
-                add_assoc_zval_ex(&z_multi_result, ZSTR_VAL(zstr), ZSTR_LEN(zstr), &z_unpacked);
-            } else {
-                add_assoc_stringl_ex(&z_multi_result, ZSTR_VAL(zstr), ZSTR_LEN(zstr), response, response_len);
+        zval z_unpacked;
+        if (response != NULL) {
+            if (!redis_unpack(redis_sock, response, response_len, &z_unpacked)) {
+                ZVAL_STRINGL(&z_unpacked, response, response_len);
             }
             efree(response);
         } else {
-            add_assoc_bool_ex(&z_multi_result, ZSTR_VAL(zstr), ZSTR_LEN(zstr), 0);
+            ZVAL_FALSE(&z_unpacked);
         }
-        zend_string_release(zstr);
-        zval_dtor(&z_keys[i]);
+        zend_symtable_update(Z_ARRVAL(z_multi_result), zstr, &z_unpacked);
+        zend_tmp_string_release(tmp_str);
     }
-    efree(z_keys);
 
     if (IS_ATOMIC(redis_sock)) {
         RETVAL_ZVAL(&z_multi_result, 0, 1);
     } else {
         add_next_index_zval(z_tab, &z_multi_result);
     }
-    return SUCCESS;
-failure:
-    if (z_keys != NULL) {
-        for (i = 0; Z_TYPE(z_keys[i]) != IS_NULL; ++i) {
-            zval_dtor(&z_keys[i]);
-        }
-        efree(z_keys);
+
+    retval = SUCCESS;
+
+end:
+    // Cleanup z_keys
+    for (i = 0; Z_TYPE(z_keys[i]) != IS_NULL; ++i) {
+        zval_dtor(&z_keys[i]);
     }
-    return FAILURE;
+    efree(z_keys);
+
+    return retval;
 }
 
 /**
