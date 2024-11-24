@@ -3447,32 +3447,26 @@ int redis_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 {
     int i, argc;
     smart_string cmdstr = {0};
-    zend_string *zkey;
-    zval *z_args, *z_ele;
+    zend_string *key, *zkey;
+    zval *args, *z_ele;
 
-    if ((argc = ZEND_NUM_ARGS()) < 2) {
-        return FAILURE;
-    }
+    ZEND_PARSE_PARAMETERS_START(2, -1)
+        Z_PARAM_STR(key)
+        Z_PARAM_VARIADIC('*', args, argc)
+    ZEND_PARSE_PARAMETERS_END_EX(return FAILURE);
 
-    z_args = ecalloc(argc, sizeof(*z_args));
-    if (zend_get_parameters_array(ht, argc, z_args) == FAILURE) {
-        efree(z_args);
-        return FAILURE;
-    }
-
-    if (argc == 2) {
-        if (Z_TYPE(z_args[1]) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL(z_args[1])) == 0) {
-            efree(z_args);
+    if (argc == 1) {
+        if (Z_TYPE_P(args) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(args)) == 0) {
             return FAILURE;
         }
 
         /* Initialize our command */
-        redis_cmd_init_sstr(&cmdstr, 1 + zend_hash_num_elements(Z_ARRVAL(z_args[1])) * 2, ZEND_STRL("HSET"));
+        redis_cmd_init_sstr(&cmdstr, 1 + zend_hash_num_elements(Z_ARRVAL_P(args)) * 2, ZEND_STRL("HSET"));
 
         /* Append key */
-        redis_cmd_append_sstr_key_zval(&cmdstr, &z_args[0], redis_sock, slot);
+        redis_cmd_append_sstr_key_zstr(&cmdstr, key, redis_sock, slot);
 
-        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(z_args[1]), zkey, z_ele) {
+        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(args), zkey, z_ele) {
             if (zkey != NULL) {
                 ZVAL_DEREF(z_ele);
                 redis_cmd_append_sstr(&cmdstr, ZSTR_VAL(zkey), ZSTR_LEN(zkey));
@@ -3480,21 +3474,21 @@ int redis_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
             }
         } ZEND_HASH_FOREACH_END();
     } else {
-        if (argc % 2 == 0) {
-            efree(z_args);
+        if (argc % 2 != 0) {
             return FAILURE;
         }
+
         /* Initialize our command */
-        redis_cmd_init_sstr(&cmdstr, argc, ZEND_STRL("HSET"));
+        redis_cmd_init_sstr(&cmdstr, argc + 1, ZEND_STRL("HSET"));
 
         /* Append key */
-        redis_cmd_append_sstr_key_zval(&cmdstr, &z_args[0], redis_sock, slot);
+        redis_cmd_append_sstr_key_zstr(&cmdstr, key, redis_sock, slot);
 
-        for (i = 1; i < argc; ++i) {
+        for (i = 0; i < argc; ++i) {
             if (i % 2) {
-                redis_cmd_append_sstr_zval(&cmdstr, &z_args[i], NULL);
+                redis_cmd_append_sstr_zval(&cmdstr, &args[i], redis_sock);
             } else {
-                redis_cmd_append_sstr_zval(&cmdstr, &z_args[i], redis_sock);
+                redis_cmd_append_sstr_zval(&cmdstr, &args[i], NULL);
             }
         }
     }
@@ -3502,9 +3496,6 @@ int redis_hset_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     // Push out values
     *cmd = cmdstr.c;
     *cmd_len = cmdstr.len;
-
-    // Cleanup arg array
-    efree(z_args);
 
     return SUCCESS;
 }
