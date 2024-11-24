@@ -1974,6 +1974,12 @@ redis_sock_read_multibulk_multi_reply(INTERNAL_FUNCTION_PARAMETERS,
         return FAILURE;
     }
 
+    // No command issued, return empty immutable array
+    if (redis_sock->head == NULL) {
+        ZVAL_EMPTY_ARRAY(z_tab);
+        return SUCCESS;
+    }
+
     array_init(z_tab);
 
     return redis_sock_read_multibulk_multi_reply_loop(INTERNAL_FUNCTION_PARAM_PASSTHRU,
