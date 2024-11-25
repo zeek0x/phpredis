@@ -1044,9 +1044,7 @@ int redis_cmd_append_sstr(smart_string *str, char *append, int append_len) {
  * Append an integer to a smart string command
  */
 int redis_cmd_append_sstr_int(smart_string *str, int append) {
-    char int_buf[32];
-    int int_len = snprintf(int_buf, sizeof(int_buf), "%d", append);
-    return redis_cmd_append_sstr(str, int_buf, int_len);
+    return redis_cmd_append_sstr_long(str, (long) append);
 }
 
 /*
@@ -1054,8 +1052,9 @@ int redis_cmd_append_sstr_int(smart_string *str, int append) {
  */
 int redis_cmd_append_sstr_long(smart_string *str, long append) {
     char long_buf[32];
-    int long_len = snprintf(long_buf, sizeof(long_buf), "%ld", append);
-    return redis_cmd_append_sstr(str, long_buf, long_len);
+    char *result = zend_print_long_to_buf(long_buf + sizeof(long_buf) - 1, append);
+    int int_len = long_buf + sizeof(long_buf) - 1 - result;
+    return redis_cmd_append_sstr(str, result, int_len);
 }
 
 /*
@@ -3937,10 +3936,15 @@ redis_serialize(RedisSock *redis_sock, zval *z, char **val, size_t *val_len)
                     break;
 
                 default: { /* copy */
-                    zend_string *zstr = zval_get_string(z);
+                    zend_string *zstr = zval_get_string_func(z);
+                    if (ZSTR_IS_INTERNED(zstr)) { // do not reallocate interned strings
+                        *val = ZSTR_VAL(zstr);
+                        *val_len = ZSTR_LEN(zstr);
+                        return 0;
+                    }
                     *val = estrndup(ZSTR_VAL(zstr), ZSTR_LEN(zstr));
                     *val_len = ZSTR_LEN(zstr);
-                    zend_string_release(zstr);
+                    zend_string_efree(zstr);
                     return 1;
                 }
             }
