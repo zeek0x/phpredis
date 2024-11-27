@@ -2718,67 +2718,6 @@ redis_ping_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
     return SUCCESS;
 }
 
-/* Response for DEBUG object which is a formatted single line reply */
-PHP_REDIS_API void redis_debug_response(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
-                                        zval *z_tab, void *ctx)
-{
-    char *resp, *p, *p2, *p3, *p4;
-    int is_numeric,  resp_len;
-
-    /* Add or return false if we can't read from the socket */
-    if((resp = redis_sock_read(redis_sock, &resp_len))==NULL) {
-        if (IS_ATOMIC(redis_sock)) {
-            RETURN_FALSE;
-        }
-        add_next_index_bool(z_tab, 0);
-        return;
-    }
-
-    zval z_result;
-    array_init(&z_result);
-
-    /* Skip the '+' */
-    p = resp + 1;
-
-    /* <info>:<value> <info2:value2> ... */
-    while((p2 = strchr(p, ':'))!=NULL) {
-        /* Null terminate at the ':' */
-        *p2++ = '\0';
-
-        /* Null terminate at the space if we have one */
-        if((p3 = strchr(p2, ' '))!=NULL) {
-            *p3++ = '\0';
-        } else {
-            p3 = resp + resp_len;
-        }
-
-        is_numeric = 1;
-        for(p4=p2; *p4; ++p4) {
-            if(*p4 < '0' || *p4 > '9') {
-                is_numeric = 0;
-                break;
-            }
-        }
-
-        /* Add our value */
-        if(is_numeric) {
-            add_assoc_long(&z_result, p, atol(p2));
-        } else {
-            add_assoc_string(&z_result, p, p2);
-        }
-
-        p = p3;
-    }
-
-    efree(resp);
-
-    if (IS_ATOMIC(redis_sock)) {
-        RETVAL_ZVAL(&z_result, 0, 1);
-    } else {
-        add_next_index_zval(z_tab, &z_result);
-    }
-}
-
 PHP_REDIS_API int
 redis_sock_configure(RedisSock *redis_sock, HashTable *opts)
 {
