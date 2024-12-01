@@ -3564,7 +3564,7 @@ PHP_REDIS_API void redis_free_socket(RedisSock *redis_sock)
     if (redis_sock->prefix) {
         zend_string_release(redis_sock->prefix);
     }
-    smart_str_free(&redis_sock->pipeline_cmd);
+    smart_string_free(&redis_sock->pipeline_cmd);
     if (redis_sock->err) {
         zend_string_release(redis_sock->err);
     }

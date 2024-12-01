@@ -177,7 +177,7 @@ typedef enum {
 #define IS_PIPELINE(redis_sock) (redis_sock->mode & PIPELINE)
 
 #define PIPELINE_ENQUEUE_COMMAND(cmd, cmd_len) do { \
-    smart_str_appendl(&redis_sock->pipeline_cmd, cmd, cmd_len); \
+    smart_string_appendl(&redis_sock->pipeline_cmd, cmd, cmd_len); \
 } while (0)
 
 #define REDIS_SAVE_CALLBACK(callback, closure_context) do { \
@@ -318,7 +318,7 @@ typedef struct {
     struct fold_item    *head;
     struct fold_item    *current;
 
-    smart_str           pipeline_cmd;
+    smart_string        pipeline_cmd;
 
     zend_string         *err;
 
