@@ -223,19 +223,14 @@ redis_sock_free_auth(RedisSock *redis_sock) {
 
 PHP_REDIS_API char *
 redis_sock_auth_cmd(RedisSock *redis_sock, int *cmdlen) {
-    char *cmd;
+    smart_string cmd = {0};
 
-    /* AUTH requires at least a password */
-    if (redis_sock->pass == NULL)
+    if (redis_sock_append_auth(redis_sock, &cmd) == 0) {
         return NULL;
-
-    if (redis_sock->user) {
-        *cmdlen = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "SS", redis_sock->user, redis_sock->pass);
-    } else {
-        *cmdlen = redis_spprintf(redis_sock, NULL, &cmd, "AUTH", "S", redis_sock->pass);
     }
 
-    return cmd;
+    *cmdlen = cmd.len;
+    return cmd.c;
 }
 
 /* Send Redis AUTH and process response */
