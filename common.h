@@ -181,17 +181,9 @@ typedef enum {
 } while (0)
 
 #define REDIS_SAVE_CALLBACK(callback, closure_context) do { \
-    fold_item *fi = malloc(sizeof(fold_item)); \
+    fold_item *fi = redis_add_reply_callback(redis_sock); \
     fi->fun = callback; \
     fi->ctx = closure_context; \
-    fi->next = NULL; \
-    if (redis_sock->current) { \
-        redis_sock->current->next = fi; \
-    } \
-    redis_sock->current = fi; \
-    if (NULL == redis_sock->head) { \
-        redis_sock->head = redis_sock->current; \
-    } \
 } while (0)
 
 #define REDIS_PROCESS_REQUEST(redis_sock, cmd, cmd_len) \
@@ -315,9 +307,9 @@ typedef struct {
     zend_string         *prefix;
 
     short               mode;
-    struct fold_item    *head;
-    struct fold_item    *current;
-
+    struct fold_item    *reply_callback;
+    size_t              reply_callback_count;
+    size_t              reply_callback_capacity;
     smart_string        pipeline_cmd;
 
     zend_string         *err;
@@ -341,7 +333,6 @@ typedef int (*FailableResultCallback)(INTERNAL_FUNCTION_PARAMETERS, RedisSock*, 
 typedef struct fold_item {
     FailableResultCallback fun;
     void *ctx;
-    struct fold_item *next;
 } fold_item;
 
 typedef struct {

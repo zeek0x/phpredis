@@ -3176,7 +3176,7 @@ redis_sock_disconnect(RedisSock *redis_sock, int force, int is_reset_mode)
             }
             if (force || !IS_ATOMIC(redis_sock)) {
                 php_stream_pclose(redis_sock->stream);
-                free_reply_callbacks(redis_sock);
+                redis_free_reply_callbacks(redis_sock);
                 if (p) p->nb_active--;
             } else if (p) {
                 zend_llist_prepend_element(&p->list, &redis_sock->stream);
@@ -3536,17 +3536,31 @@ redis_sock_write(RedisSock *redis_sock, char *cmd, size_t sz)
     return -1;
 }
 
-void
-free_reply_callbacks(RedisSock *redis_sock)
-{
-    fold_item *fi;
-
-    while (redis_sock->head != NULL) {
-        fi = redis_sock->head->next;
-        free(redis_sock->head);
-        redis_sock->head = fi;
+fold_item*
+redis_add_reply_callback(RedisSock *redis_sock) {
+    /* Grow array to double size if we need more space */
+    if (UNEXPECTED(redis_sock->reply_callback_count == redis_sock->reply_callback_capacity)) {
+        if (redis_sock->reply_callback_capacity == 0) {
+            redis_sock->reply_callback_capacity = 8; /* initial capacity */
+        } else if (redis_sock->reply_callback_capacity < 1024) {
+            redis_sock->reply_callback_capacity *= 2;
+        } else {
+            redis_sock->reply_callback_capacity += 4 * 4096 / sizeof(fold_item);
+        }
+        redis_sock->reply_callback = erealloc(redis_sock->reply_callback, redis_sock->reply_callback_capacity * sizeof(fold_item));
     }
-    redis_sock->current = NULL;
+    return &redis_sock->reply_callback[redis_sock->reply_callback_count++];
+}
+
+void
+redis_free_reply_callbacks(RedisSock *redis_sock)
+{
+    if (redis_sock->reply_callback != NULL) {
+        efree(redis_sock->reply_callback);
+        redis_sock->reply_callback = NULL;
+        redis_sock->reply_callback_count = 0;
+        redis_sock->reply_callback_capacity = 0;
+    }
 }
 
 /**
@@ -3577,7 +3591,7 @@ PHP_REDIS_API void redis_free_socket(RedisSock *redis_sock)
         }
     }
     redis_sock_free_auth(redis_sock);
-    free_reply_callbacks(redis_sock);
+    redis_free_reply_callbacks(redis_sock);
     efree(redis_sock);
 }
 

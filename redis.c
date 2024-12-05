@@ -491,7 +491,7 @@ PHP_METHOD(Redis,__destruct) {
             // queued
             redis_send_discard(redis_sock);
         }
-        free_reply_callbacks(redis_sock);
+        redis_free_reply_callbacks(redis_sock);
     }
 }
 
@@ -750,7 +750,7 @@ PHP_METHOD(Redis, reset)
         RETURN_ZVAL(getThis(), 1, 0);
     }
 
-    free_reply_callbacks(redis_sock);
+    redis_free_reply_callbacks(redis_sock);
     redis_sock->status = REDIS_SOCK_STATUS_CONNECTED;
     redis_sock->mode = ATOMIC;
     redis_sock->dbNumber = 0;
@@ -1953,7 +1953,7 @@ PHP_METHOD(Redis, discard)
         ret = redis_send_discard(redis_sock);
     }
     if (ret == SUCCESS) {
-        free_reply_callbacks(redis_sock);
+        redis_free_reply_callbacks(redis_sock);
         redis_sock->mode = ATOMIC;
         RETURN_TRUE;
     }
@@ -1975,7 +1975,7 @@ redis_sock_read_multibulk_multi_reply(INTERNAL_FUNCTION_PARAMETERS,
     }
 
     // No command issued, return empty immutable array
-    if (redis_sock->head == NULL) {
+    if (redis_sock->reply_callback == NULL) {
         ZVAL_EMPTY_ARRAY(z_tab);
         return SUCCESS;
     }
@@ -2015,7 +2015,7 @@ PHP_METHOD(Redis, exec)
         }
         ret = redis_sock_read_multibulk_multi_reply(
             INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, &z_ret);
-        free_reply_callbacks(redis_sock);
+        redis_free_reply_callbacks(redis_sock);
         REDIS_DISABLE_MODE(redis_sock, MULTI);
         redis_sock->watching = 0;
         if (ret < 0) {
@@ -2042,7 +2042,7 @@ PHP_METHOD(Redis, exec)
             }
             smart_string_free(&redis_sock->pipeline_cmd);
         }
-        free_reply_callbacks(redis_sock);
+        redis_free_reply_callbacks(redis_sock);
         REDIS_DISABLE_MODE(redis_sock, PIPELINE);
     }
     RETURN_ZVAL(&z_ret, 0, 1);
@@ -2067,12 +2067,13 @@ PHP_REDIS_API int
 redis_sock_read_multibulk_multi_reply_loop(INTERNAL_FUNCTION_PARAMETERS,
                                            RedisSock *redis_sock, zval *z_tab)
 {
-    fold_item *fi;
+    fold_item fi;
+    size_t i;
 
-    for (fi = redis_sock->head; fi; /* void */) {
-        if (fi->fun) {
-            fi->fun(INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, z_tab, fi->ctx);
-            fi = fi->next;
+    for (i = 0; i < redis_sock->reply_callback_count; i++) {
+        fi = redis_sock->reply_callback[i];
+        if (fi.fun) {
+            fi.fun(INTERNAL_FUNCTION_PARAM_PASSTHRU, redis_sock, z_tab, fi.ctx);
             continue;
         }
         size_t len;
@@ -2084,7 +2085,7 @@ redis_sock_read_multibulk_multi_reply_loop(INTERNAL_FUNCTION_PARAMETERS,
             return FAILURE;
         }
 
-        while ((fi = fi->next) && fi->fun) {
+        while (redis_sock->reply_callback[++i].fun) {
             if (redis_response_enqueued(redis_sock) != SUCCESS) {
                 return FAILURE;
             }
@@ -2103,10 +2104,7 @@ redis_sock_read_multibulk_multi_reply_loop(INTERNAL_FUNCTION_PARAMETERS,
         if (num > 0 && redis_read_multibulk_recursive(redis_sock, num, 0, &z_ret) < 0) {
             return FAILURE;
         }
-
-        if (fi) fi = fi->next;
     }
-    redis_sock->current = fi;
     return SUCCESS;
 }
 
