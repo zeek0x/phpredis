@@ -2654,33 +2654,21 @@ PHP_METHOD(Redis, client) {
 
 /* {{{ proto mixed Redis::rawcommand(string $command, [ $arg1 ... $argN]) */
 PHP_METHOD(Redis, rawcommand) {
-    int argc = ZEND_NUM_ARGS(), cmd_len;
+    int argc, cmd_len;
     char *cmd = NULL;
     RedisSock *redis_sock;
     zval *z_args;
 
-    /* Sanity check on arguments */
-    if (argc < 1) {
-        php_error_docref(NULL, E_WARNING,
-            "Must pass at least one command keyword");
-        RETURN_FALSE;
-    }
-    z_args = emalloc(argc * sizeof(zval));
-    if (zend_get_parameters_array(ht, argc, z_args) == FAILURE) {
-        php_error_docref(NULL, E_WARNING,
-            "Internal PHP error parsing arguments");
-        efree(z_args);
-        RETURN_FALSE;
-    } else if (redis_build_raw_cmd(z_args, argc, &cmd, &cmd_len) < 0 ||
+    ZEND_PARSE_PARAMETERS_START(1, -1)
+        Z_PARAM_VARIADIC('+', z_args, argc)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (redis_build_raw_cmd(z_args, argc, &cmd, &cmd_len) < 0 ||
                (redis_sock = redis_sock_get(getThis(), 0)) == NULL
     ) {
         if (cmd) efree(cmd);
-        efree(z_args);
         RETURN_FALSE;
     }
-
-    /* Clean up command array */
-    efree(z_args);
 
     /* Execute our command */
     REDIS_PROCESS_REQUEST(redis_sock, cmd, cmd_len);
