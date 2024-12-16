@@ -574,7 +574,7 @@ int redis_key_dbl_cmd(INTERNAL_FUNCTION_PARAMETERS, RedisSock *redis_sock,
 
 /* Generic to construct SCAN and variant commands */
 int redis_fmt_scan_cmd(char **cmd, REDIS_SCAN_TYPE type, char *key, int key_len,
-                       long it, char *pat, int pat_len, long count)
+                       uint64_t it, char *pat, int pat_len, long count)
 {
     static char *kw[] = {"SCAN","SSCAN","HSCAN","ZSCAN"};
     int argc;
@@ -591,7 +591,7 @@ int redis_fmt_scan_cmd(char **cmd, REDIS_SCAN_TYPE type, char *key, int key_len,
     }
 
     // Append cursor
-    redis_cmd_append_sstr_long(&cmdstr, it);
+    redis_cmd_append_sstr_ui64(&cmdstr, it);
 
     // Append count if we've got one
     if (count) {
