@@ -591,7 +591,7 @@ int redis_fmt_scan_cmd(char **cmd, REDIS_SCAN_TYPE type, char *key, int key_len,
     }
 
     // Append cursor
-    redis_cmd_append_sstr_ui64(&cmdstr, it);
+    redis_cmd_append_sstr_u64(&cmdstr, it);
 
     // Append count if we've got one
     if (count) {

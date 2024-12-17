@@ -50,7 +50,7 @@ int redis_cmd_append_sstr(smart_string *str, char *append, int append_len);
 int redis_cmd_append_sstr_int(smart_string *str, int append);
 int redis_cmd_append_sstr_long(smart_string *str, long append);
 int redis_cmd_append_sstr_i64(smart_string *str, int64_t append);
-int redis_cmd_append_sstr_ui64(smart_string *str, uint64_t append);
+int redis_cmd_append_sstr_u64(smart_string *str, uint64_t append);
 int redis_cmd_append_sstr_dbl(smart_string *str, double value);
 int redis_cmd_append_sstr_zstr(smart_string *str, zend_string *zstr);
 int redis_cmd_append_sstr_zval(smart_string *str, zval *z, RedisSock *redis_sock);

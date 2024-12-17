@@ -1068,8 +1068,8 @@ int redis_cmd_append_sstr_i64(smart_string *str, int64_t append) {
 /*
  * Append a 64-bit unsigned integer to our command
  */
-int redis_cmd_append_sstr_ui64(smart_string *str, uint64_t append) {
-    char nbuf[64];
+int redis_cmd_append_sstr_u64(smart_string *str, uint64_t append) {
+    char nbuf[21];
     int len = snprintf(nbuf, sizeof(nbuf), "%" PRIu64, append);
     return redis_cmd_append_sstr(str, nbuf, len);
 }
