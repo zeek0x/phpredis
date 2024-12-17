@@ -1060,7 +1060,7 @@ int redis_cmd_append_sstr_long(smart_string *str, long append) {
  * Append a 64-bit integer to our command
  */
 int redis_cmd_append_sstr_i64(smart_string *str, int64_t append) {
-    char nbuf[64];
+    char nbuf[21];
     int len = snprintf(nbuf, sizeof(nbuf), "%" PRId64, append);
     return redis_cmd_append_sstr(str, nbuf, len);
 }
